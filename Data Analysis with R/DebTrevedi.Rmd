@@ -1,0 +1,227 @@
+---
+title: "DebTrevedi Analysis"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### Introduction
+
+In this report the demand for medical care data which was studied by Deb and Trevedi in 1997 was analyzed. The original dataset consists of 19 variables and 4406 observations made on people older than 66 and covered by a public insurance program Medicare. The aim of this study was to study how access to private health insurance (privins) and medicare program (medicaid) impacts the number of physician office visits (ofp).  
+
+
+The inbuilt R dataset, DebTrevedi, was first read (db) and the variables, "ofnp", "opp", "opnp", "emer" and "hosp" were removed as they were not used in our analysis (newdata). The data was then modeled using a negative binomial regression with ofp as the response variable and the rest of the variables as the explanatory variables (glm1). Backward elimination was then performed to arrive at a statistically significant model (step.lm). A separate negative binomial was then fitted with all possible interaction terms (glm.f). Significant terms from both models were combined and further backward and chi-square elimination was performed to obtain our final model with explanatory and interaction variables (final.lm). Lastly, models were compared and our final analysis was performed on the least complex model. 
+
+#### Results
+
+As we can see from Figure 1, the distribution of physician visits (ofp) is highly skewed to the right (figure 1). Our model shows that for those who that had access to private insurance and medicaid, the rate of ofp was higher by a factor of 1.72 and 1.22 (exp_estimates) when compared to those without private insurance and medicaid respectively .For those who were employed and had access to medicaid the rate of ofp was 2.76 (med_employed) higher than employed individuals without medicaid. Also, as the number of chronic conditions increased by 1 the rate of physician visits increased by a factor of 1.33, unless privately insured, in which case the rate of ofp increases by 1.25 (priv_numchron). 
+
+Compared to those who had average health, poor health individuals showed a increase rate of ofp by a factor 2.17, whereas, those in excellent health had a decreased rate of ofp by a factor of 0.57. Similarly males as well as married individuals had  a decrease rate of ofp by a factor of 0.77 and 0.88 when compared to females and unmarried people respectively. However, males who were married were found to have an increase incidence of ofp by 18% (male_married) compared to married females. An increase in age and number of years of education (school) by 1 year was also found to increase ofp by 2.5% and 4.1% respectively. 
+
+Lastly, those with disabilities (adldiff) had the greatest impact on visits as the incidence of ofp in this group was 11.88 times greater compared to those without disabilities. Also, within this group an increase in age by 1, decreased the rate of ofp by 22% (adl_age). 
+
+
+#### Discussion
+
+Our analysis shows that access to both private insurance and medicaid significantly increases the rate of physician visits (ofp) by 72% and 22% respectively (p<0.05). Furthermore, for those who are employed and have access to medicaid, this rate (ofp) increases nearly 3 times (med_employed). Although our results were found to be statistically significant, our model also shows outliers, a curve pattern in the residuals (Figure 2) as well as large standardized residuals which could make our model and predictions unreliable. An attempt to transform the model using square root transformation  on the response variable (ofp) was not successful as it resulted in a large degree of standard error (final.sqrt). Similarly, adding a quadratic or cubic term to ofp reduced the curvature in the residuals but also increased the standardized residuals and the AIC significantly (final.cubic). Results were therefore analyzed using the un-transformed model (final.lm), however an appropriate transformation and removal of outliers is necessary for more reliable analysis.  
+
+
+
+# Apendix
+
+## Importing data.
+
+```{r}
+
+
+library(MixAll)
+library(rtkore)
+
+data(DebTrivedi)
+
+db <- DebTrivedi
+
+summary(db)
+
+str(db)
+```
+
+
+## Removing variables.
+
+```{r message=FALSE, warning=FALSE}
+myvars <- names(db) %in% c("ofnp", "opp", "opnp", "emer", "hosp")
+
+newdata <- db[!myvars]
+
+attach(newdata)
+
+str(newdata)
+```
+
+## Figure 1. Ofp barplot. 
+
+```{r}
+with(newdata, barplot(table(factor(ofp, levels = 0:91)),ylim = c(0, 700),col = 'red', xlab = 
+                           "Number of physician visits",ylab ="Frequency"))
+```
+
+## Fitting first model with all terms.
+
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+
+glm1 <- glm.nb(ofp ~ ., data = newdata)
+
+summary(glm1)
+```
+
+
+## Backward step elmination of glm1.
+
+```{r warning=FALSE, include=TRUE, results='hide'}
+
+step.lm<-stepAIC(glm1)
+summary(step.lm)
+```
+
+## Second glm with full interaction terms.
+
+```{r warning=FALSE, include=TRUE, results='hide'}
+glm.f<-glm.nb(ofp ~  (medicaid+privins+employed+health+numchron+ black+adldiff+gender+age+married
+                     +school+faminc+region)^2 , data = newdata  )
+
+summary(glm.f)
+```
+
+## Combined model of significant terms from glm1 and glm.f
+
+```{r warning=FALSE, include=TRUE, results='hide'}
+mod.glm <- glm.nb(ofp ~  (medicaid+privins+numchron+region+health+gender+school+adldiff)^2 +medicaid*employed+employed*health+
+                    employed*region+adldiff*age+gender*married, data = newdata  )
+
+summary(mod.glm)
+```
+
+## Backward step elmination of mod.glm.
+
+```{r warning=FALSE, include=TRUE, results='hide'}
+step.modglm<-stepAIC(mod.glm)
+summary(step.modglm)
+```
+
+## dropterm sequence chisquare emlination of  step.modglm
+
+
+```{r warning=FALSE, include=TRUE, results='hide'}
+dropterm(step.modglm, test = "Chisq")
+
+# drop medicaid:privins
+
+summary(step.lm2 <- update(step.modglm, . ~ . - medicaid:privins))
+
+dropterm(step.lm2, test = "Chisq")
+
+# drop privins:health
+summary(step.lm3 <- update(step.lm2, . ~ . - privins:health))
+
+
+dropterm(step.lm3, test = "Chisq")
+
+# drop medicaid:health
+
+summary(step.lm4 <- update(step.lm3, . ~ . - medicaid:health))
+
+
+dropterm(step.lm4, test = "Chisq")
+
+# drop health:gender
+summary(step.lm5 <- update(step.lm4, . ~ . - health:gender))
+
+dropterm(step.lm5, test = "Chisq")
+
+summary(step.lm5)
+
+```
+
+
+## Final model from step.lm5
+
+```{r}
+final.lm<- glm.nb(formula = ofp ~ medicaid + privins + numchron + region + 
+                    health + gender + school + adldiff + employed + age + married + 
+                    privins:numchron + privins:region + numchron:health + numchron:adldiff + 
+                    region:health + region:school + health:school + medicaid:employed + 
+                    health:employed + region:employed + adldiff:age + gender:married, 
+                  data = newdata )
+
+summary(final.lm)
+
+dropterm(final.lm, test = "Chisq")
+```
+
+
+## exp_estimates
+
+```{r message=FALSE, warning=FALSE}
+exp(exp_estimates <- cbind(Estimate = coef(final.lm), confint(final.lm)))
+
+```
+
+## Analysis of interaction coeffecients 
+
+```{r}
+# The effect of chronic conditions on privately insured people. 
+priv_numchron<-exp(0.283979-0.058837)
+
+#access to medicaid and employed
+
+med_employed<-exp(0.812072+0.202779)
+
+# male and married
+male_married<-exp(0.286417-0.123187)
+
+
+#disables adldiff and age 
+adl_age<-exp(0.040169-0.288929)
+
+cbind(priv_numchron,med_employed,male_married,adl_age)
+```
+
+
+## Figure 2 - Residuals vs fitted values for final.lm 
+
+```{r}
+plot(fitted(final.lm), residuals (final.lm))
+```
+
+
+## Sqrt Transformed- Final sqrt
+
+```{r message=FALSE, warning=FALSE}
+final.sqrt<- glm.nb(formula = ofp**0.5 ~ medicaid + privins + numchron + region + 
+                    health + gender + school + adldiff + employed + age + married + 
+                    privins:numchron + privins:region + numchron:health + numchron:adldiff + 
+                    region:health + region:school + health:school + medicaid:employed + 
+                    health:employed + region:employed + adldiff:age + gender:married, 
+                  data = newdata )
+
+summary(final.sqrt)
+```
+
+
+## Cube Transformed- final.cube
+
+```{r message=FALSE, warning=FALSE}
+final.cube<- glm.nb(formula = ofp**3 ~ medicaid + privins + numchron + region + 
+                    health + gender + school + adldiff + employed + age + married + 
+                    privins:numchron + privins:region + numchron:health + numchron:adldiff + 
+                    region:health + region:school + health:school + medicaid:employed + 
+                    health:employed + region:employed + adldiff:age + gender:married, 
+                  data = newdata )
+
+summary(final.cube)
+```
