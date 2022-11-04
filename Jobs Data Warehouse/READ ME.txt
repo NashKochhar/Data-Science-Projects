@@ -1,0 +1,44 @@
+The aim is to build a Data Warehouse for job posts datasets obtained from reed (UK) and seek (AUS)
+
+Follow steps to build factless Job_DW Warehouse.
+
+1. Run Create_database.sql
+
+2. Run CreateTableRelations.sql
+
+3. Edit the bulk_qeury.sql file.  
+
+Enter full folder path of dimension files in all sections of the bulk qeury file where you find "Enter Full folder path containing .csv file". 
+
+3 a) These dimension and fact table files can be found in the CSV files folder. 
+
+3 b) Or run Extraction_Transformation to obtain new CSV dimension and fact tables in the current folder and use that as path for bulk query.
+
+
+Extraction_Transformation is a jupyter notebook file which creates dimensions and fact tables (already provided in CSV files folder)
+Extraction_Transformation depends on having reed.csv and seek.csv files in the current folder(provided).
+
+BI_report_StarNet_Schema.pdf is a report generted from PowerBI.
+
+It contains star schema, starnet, and BI visuals which help us answer 5 key business questions relating to the business process.
+
+The Fact table in this design is a factless transactional type table it contains one row for each unique job post (80,000 total).
+
+Some questions we can answer are:
+
+1. Which industries have the highest number of job posts and what is thier job type? 
+- Number of jobs per industry(category) for each job type(part-time, full-time etc)
+2. Which months have the highest number of job posts? 
+-Number of Jobs by Job Type and Month.
+3. Which days are the most popular for job posts.
+- Job Count by Day Name
+4. How many jobs per location?
+- Job Count by location
+5. Which companies posted what type of roles and how many?
+- Job Count by company name and title. 
+
+ 
+
+
+
+
